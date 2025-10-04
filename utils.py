@@ -47,33 +47,58 @@ def show_stats(df):
                 st.write(f"- {k}: {v}")
 
 def executive_summary_and_advice(df, segundos_verde, intersection, ciclo):
+    """
+    Genera recomendaciones precisas y cuantificadas para mejorar la operación del cruce,
+    priorizando brazos/fases saturadas y con problemas críticos.
+    """
+
+    # Umbrales parametrizables
+    umbral_saturacion_alta = 0.85
+    incremento_verde = 10  # segundos a aumentar en verde cuando se recomienda
+    incremento_ciclo = 10  # segundos a aumentar en ciclo cuando se recomienda
+
+    # Identificar brazos/fases problemáticas
+    brazos_saturados = []
+    fases_a_mejorar = set()
+    for i, sat in enumerate(df["Saturación"]):
+        if sat >= umbral_saturacion_alta:
+            brazos_saturados.append((i, sat))
+            # Asociar brazo con fase(s)
+            for j, phase in enumerate(intersection.phases):
+                if i in phase.arms_active:
+                    fases_a_mejorar.add(j)
+
+    # Identificar brazo con mayor demora
+    idx_brazo_demora = df["Demora promedio (s)"].idxmax()
+    brazo_mayor_demora = df.loc[idx_brazo_demora, "Brazo"]
+    demora_max = df.loc[idx_brazo_demora, "Demora promedio (s)"]
+
     consejo = ""
-    max_demora = df["Demora promedio (s)"].max()
-    max_cola = df["Cola máxima"].max()
-    brazo_peor = df.iloc[df["Demora promedio (s)"].idxmax()]["Brazo"]
-    idx_fase_peor = None
 
-    # Buscar qué fase abre ese brazo
-    for i, phase in enumerate(intersection.phases):
-        if df["Brazo"].iloc[df["Demora promedio (s)"].idxmax()] in [f"Brazo {a+1}" for a in phase.arms_active]:
-            idx_fase_peor = i
-            break
+    # Caso 1: Hay saturación alta (prioridad principal)
+    if brazos_saturados:
+        fases_str = ", ".join([f"'{intersection.phases[j].name}'" for j in fases_a_mejorar])
+        consejo += f"Brazo(s) saturado(s): "
+        consejo += ", ".join([f"Brazo {b+1} (S={sat:.2f})" for b, sat in brazos_saturados]) + ". "
+        consejo += f"Recomiendo aumentar el tiempo verde en fase(s) {fases_str} en {incremento_verde} segundos "
+        consejo += f"y extender el ciclo total a {ciclo + incremento_ciclo} segundos."
 
-    # Reglas simples para el consejo
-    if max_demora > 100:
-        consejo = f"Considera aumentar el ciclo total o incrementar el verde en la fase que atiende a {brazo_peor} (actualmente {segundos_verde[idx_fase_peor]}s)."
-    elif max_demora > 60 or max_cola > 30:
-        consejo = f"Sube el verde de la fase prioritaria para {brazo_peor} o baja el verde en fases con menos tráfico."
-    elif (df['Demora promedio (s)'] < 20).all():
-        consejo = "El cruce está operando eficientemente. Puedes considerar acortar ligeramente el ciclo para reducir esperas generales."
+    # Caso 2: Sin saturación pero con demora muy alta
+    elif demora_max > 1200:  # más de 20 minutos demora alta
+        # Buscar fase que atiende ese brazo
+        fases_demora = [j for j, phase in enumerate(intersection.phases) if idx_brazo_demora in phase.arms_active]
+        if fases_demora:
+            f = intersection.phases[fases_demora[0]]
+            tiempo_actual = segundos_verde[fases_demora[0]]
+            consejo += (f"Brazo con mayor demora ({demora_max:.0f}s) es {brazo_mayor_demora}. "
+                        f"Sube {incremento_verde} segundos el verde en fase '{f.name}' (actualmente {tiempo_actual}s) "
+                        "o considera aumentar el ciclo.")
+        else:
+            consejo += f"Brazo con mayor demora ({demora_max:.0f}s) es {brazo_mayor_demora}, revisa tiempos verdes."
+
+    # Caso 3: Sin problemas graves
     else:
-        consejo = "Prueba equilibrar mejor los verdes entre fases y revisa si el ciclo total es suficiente."
-
-    # Posibles mejoras avanzadas
-    if ciclo < 40:
-        consejo += " El ciclo es muy corto; podrías perder eficiencia por tiempos de pérdida."
-    elif ciclo > 150:
-        consejo += " Cuidado con ciclos demasiado largos: pueden aumentar esperas en fases con baja demanda."
+        consejo += "El cruce opera bien. Puedes probar a reducir ligeramente el ciclo para mejorar la fluidez."
 
     return consejo
 
