@@ -5,7 +5,13 @@ import pandas as pd
 from intersection import model_plus, model_tee, model_star
 from simulation import simulate_intersection
 from params import get_arrival_rates, get_sim_time
-from utils import draw_intersection, plot_bar_metric, show_stats
+from utils import (
+    draw_intersection, 
+    plot_bar_metric, 
+    show_stats, 
+    executive_summary_and_advice,
+    detailed_problem_description
+)
 
 # --- SELECCIÓN DE MODELO DE CRUCE ---
 st.title("Simulador de Tráfico Urbano por Cruce Multi-Fase")
@@ -86,15 +92,13 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
     plot_bar_metric(df, "Cola máxima", "Cola máxima por brazo")
     plot_bar_metric(df, "Atendidos", "Vehículos atendidos por brazo")
     show_stats(df)
-    
-    from utils import executive_summary_and_advice
 
     consejo = executive_summary_and_advice(df, segundos_verde, intersection, ciclo)
     st.markdown(f"### Consejo ejecutivo")
-    st.info(consejo if consejo else "El sistema parece estar funcionando bien con los parámetros actuales.")
+    st.info(consejo)
 
-
-    st.markdown("**Puedes comparar modelos, proporciones de verde y tasas de llegada para ver el impacto en las métricas.**")
+    descripcion_problemas = detailed_problem_description(df, segundos_verde, intersection, ciclo)
+    st.markdown(descripcion_problemas)
 
 else:
     st.info("Ajusta los parámetros y pulsa 'Ejecutar simulación' para ver resultados. No puedes simular si la suma de verdes supera el 100%.")

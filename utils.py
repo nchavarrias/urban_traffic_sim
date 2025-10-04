@@ -75,3 +75,48 @@ def executive_summary_and_advice(df, segundos_verde, intersection, ciclo):
         consejo += " Cuidado con ciclos demasiado largos: pueden aumentar esperas en fases con baja demanda."
 
     return consejo
+
+def detailed_problem_description(df, segundos_verde, intersection, ciclo):
+    """
+    Devuelve una descripción clara de los brazos con mayores problemas,
+    explicando por qué son problemáticos usando métricas relevantes.
+    """
+    # Identificar brazos con peor demora, cola y porcentaje atendido
+    brazo_peor_demora = df.iloc[df["Demora promedio (s)"].idxmax()]
+    brazo_peor_cola = df.iloc[df["Cola máxima"].idxmax()]
+    brazo_menor_atendidos = df.iloc[df["Atendidos"].idxmin()]
+
+    texto = f"### Análisis detallado de problemas por brazo\n\n"
+
+    # Descripción demora
+    texto += (f"- **{brazo_peor_demora['Brazo']}** tiene la mayor demora promedio "
+              f"({brazo_peor_demora['Demora promedio (s)']:.1f} s), indicando que los vehículos "
+              "esperan mucho antes de cruzar.\n")
+
+    # Buscar fase responsable (que abre ese brazo)
+    idx_fase_demora = None
+    for i, phase in enumerate(intersection.phases):
+        if int(brazo_peor_demora['Brazo'].split()[-1]) - 1 in phase.arms_active:
+            idx_fase_demora = i
+            break
+    tiempo_verde_demora = segundos_verde[idx_fase_demora] if idx_fase_demora is not None else 0
+    texto += (f"  Esto puede ser por un tiempo verde reducido en la fase "
+              f"\"{intersection.phases[idx_fase_demora].name}\" ({tiempo_verde_demora}s).\n\n")
+
+    # Descripción cola máxima
+    texto += (f"- **{brazo_peor_cola['Brazo']}** presenta la cola máxima de "
+              f"{brazo_peor_cola['Cola máxima']} vehículos, lo que sugiere congestión considerable "
+              "y posibilidad de bloqueo upstream.\n\n")
+
+    # Descripción vehículos atendidos
+    texto += (f"- **{brazo_menor_atendidos['Brazo']}** tiene el menor número de vehículos "
+              f"servidos ({brazo_menor_atendidos['Atendidos']} veh.), lo que puede indicar saturación "
+              "o insuficiente tiempo verde asignado.\n\n")
+
+    texto += ("Recomendación: Revisa los tiempos verdes asignados a las fases relacionadas con estos "
+              "brazos para mejorar el flujo y reducir demoras.\n")
+
+    # Información sobre el ciclo total
+    texto += f"\nEl ciclo total del cruce es de {ciclo} segundos."
+
+    return texto
