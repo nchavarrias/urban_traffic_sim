@@ -44,7 +44,6 @@ if proporcion_total > 100:
 else:
     st.sidebar.success(f"Suma total: {proporcion_total}%")
 
-# Asignar segundos reales a cada fase
 segundos_verde = [int(ciclo * verde / 100) for verde in verdes]
 for idx, phase in enumerate(intersection.phases):
     phase.green_time = segundos_verde[idx]
@@ -85,15 +84,16 @@ for idx, phase in enumerate(intersection.phases):
     acc = ', '.join([f"Brazo {i+1}" for i in phase.arms_active])
     st.markdown(f"- **{phase.name}**: {segundos_verde[idx]}s (<span style='color:red'>{acc}</span>)", unsafe_allow_html=True)
 
-# --- DURACIÓN DE SIMULACIÓN Y BOTÓN ---
 sim_time = st.slider("Duración de simulación total (s)", 600, 3600, 1800)
-resultados = {}
 
-# --- EJECUCIÓN DE SIMULACIÓN ---
+resultados = {}
+log = []
+
 if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
     env = simpy.Environment()
-    env.process(simulate_intersection(env, intersection, llegadas, sim_time, resultados))
+    env.process(simulate_intersection(env, intersection, llegadas, sim_time, resultados, log=log))
     env.run()
+
     df = pd.DataFrame({
         "Brazo": [f"Brazo {i+1}" for i in range(n_arms)],
         "Demora promedio (s)": resultados['demora_prom'],
@@ -101,7 +101,6 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
         "Atendidos": resultados['atendidos']
     })
 
-    # Calcular y añadir la saturación por brazo
     tiempos_verde_brazo = assign_verde_por_brazo(intersection, segundos_verde)
     saturacion = []
     for i, q in enumerate(llegadas):
@@ -113,14 +112,13 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
         saturacion.append(sat_i)
     df["Saturación"] = saturacion
 
-    # Mostrar DF con color según saturación
     def color_saturation(val):
         if val >= 1:
-            color = "background-color: #ff4c4c"  # rojo fuerte
+            color = "background-color: #ff4c4c"
         elif val >= 0.85:
-            color = "background-color: #ffd966"  # amarillo
+            color = "background-color: #ffd966"
         else:
-            color = "background-color: #a9d18e"  # verde
+            color = "background-color: #a9d18e"
         return color
 
     st.markdown("### Métricas por brazo")
@@ -130,7 +128,6 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
     plot_bar_metric(df, "Atendidos", "Vehículos atendidos por brazo")
     show_stats(df)
 
-    # Alertas saturación
     for i, v in enumerate(saturacion):
         if v >= 1:
             st.error(f"¡Brazo {i+1} está saturado (S≥1)! Considera aumentar tiempo verde o capacidad.")
@@ -138,12 +135,13 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
             st.warning(f"Brazo {i+1} está próximo a saturarse (S≥0.85). Vigila la demanda o ajuste semafórico.")
 
     consejo = executive_summary_and_advice(df, segundos_verde, intersection, ciclo)
-    st.markdown(f"### Consejo ejecutivo")
+    st.markdown("### Consejo ejecutivo")
     st.info(consejo)
 
     descripcion_problemas = detailed_problem_description(df, segundos_verde, intersection, ciclo)
     st.markdown(descripcion_problemas)
 
+    st.text_area("Log de simulación (últimas líneas)", value="\n".join(log[-50:]), height=300)
 else:
     st.info("Ajusta los parámetros y pulsa 'Ejecutar simulación' para ver resultados. No puedes simular si la suma de verdes supera el 100%.")
 
