@@ -6,12 +6,10 @@ from intersection import model_plus, model_tee, model_star
 from simulation import simulate_intersection
 from params import get_arrival_rates, get_sim_time
 from utils import (
-    draw_intersection, 
-    plot_bar_metric, 
-    show_stats, 
     executive_summary_and_advice,
     detailed_problem_description,
-    assign_verde_por_brazo
+    assign_verde_por_brazo,
+    draw_intersection
 )
 
 # --- SELECCIÓN DE MODELO DE CRUCE ---
@@ -68,7 +66,7 @@ for i in range(n_arms):
 # --- DIAGRAMA DEL CRUCE ---
 st.markdown("### Esquema del cruce y fases")
 selected_fase = st.selectbox(
-    "Visualiza o resalta la fase:", 
+    "Visualiza o resalta la fase:",
     range(n_fases),
     format_func=lambda i: intersection.phases[i].name
 )
@@ -123,10 +121,11 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
 
     st.markdown("### Métricas por brazo")
     st.dataframe(df.style.applymap(color_saturation, subset=["Saturación"]))
-    plot_bar_metric(df, "Demora promedio (s)", "Demora media por brazo")
-    plot_bar_metric(df, "Cola máxima", "Cola máxima por brazo")
-    plot_bar_metric(df, "Atendidos", "Vehículos atendidos por brazo")
-    show_stats(df)
+
+    st.markdown("### Resumen Estadístico")
+    for col in ["Demora promedio (s)", "Cola máxima", "Atendidos", "Saturación"]:
+        if col in df.columns:
+            st.write(f"**{col}:** media={df[col].mean():.2f}, máximo={df[col].max()}, mínimo={df[col].min()}")
 
     for i, v in enumerate(saturacion):
         if v >= 1:
@@ -142,6 +141,7 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
     st.markdown(descripcion_problemas)
 
     st.text_area("Log de simulación (últimas líneas)", value="\n".join(log[-50:]), height=300)
+
 else:
     st.info("Ajusta los parámetros y pulsa 'Ejecutar simulación' para ver resultados. No puedes simular si la suma de verdes supera el 100%.")
 
