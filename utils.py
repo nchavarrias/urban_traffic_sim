@@ -39,11 +39,12 @@ def summary_stats(series):
 
 def show_stats(df):
     st.markdown("### Resumen Estadístico")
-    for col in ["Demora promedio (s)", "Cola máxima", "Atendidos"]:
-        stats = summary_stats(df[col])
-        st.markdown(f"#### {col}")
-        for k, v in stats.items():
-            st.write(f"- {k}: {v}")
+    for col in ["Demora promedio (s)", "Cola máxima", "Atendidos", "Saturación"]:
+        if col in df.columns:
+            stats = summary_stats(df[col])
+            st.markdown(f"#### {col}")
+            for k, v in stats.items():
+                st.write(f"- {k}: {v}")
 
 def executive_summary_and_advice(df, segundos_verde, intersection, ciclo):
     consejo = ""
@@ -120,3 +121,14 @@ def detailed_problem_description(df, segundos_verde, intersection, ciclo):
     texto += f"\nEl ciclo total del cruce es de {ciclo} segundos."
 
     return texto
+
+def assign_verde_por_brazo(intersection, segundos_verde):
+    """
+    Suma para cada brazo el tiempo verde total acumulado según las fases que lo atienden.
+    """
+    n_brazos = intersection.n_arms
+    tiempo_verde_brazo = [0] * n_brazos
+    for i, phase in enumerate(intersection.phases):
+        for brazo in phase.arms_active:
+            tiempo_verde_brazo[brazo] += segundos_verde[i]
+    return tiempo_verde_brazo

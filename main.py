@@ -10,7 +10,8 @@ from utils import (
     plot_bar_metric, 
     show_stats, 
     executive_summary_and_advice,
-    detailed_problem_description
+    detailed_problem_description,
+    assign_verde_por_brazo
 )
 
 # --- SELECCIÓN DE MODELO DE CRUCE ---
@@ -86,12 +87,43 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
         "Cola máxima": resultados['cola_max'],
         "Atendidos": resultados['atendidos']
     })
+
+    # Calcular y añadir la saturación
+    tiempos_verde_brazo = assign_verde_por_brazo(intersection, segundos_verde)
+    capacidad_max = 1800  # capacidad máxima estándar veh/h
+    saturacion = []
+    for i, q in enumerate(llegadas):
+        if tiempos_verde_brazo[i] == 0:
+            sat_i = 0
+        else:
+            cap_ef = capacidad_max * (tiempos_verde_brazo[i] / ciclo)
+            sat_i = q / cap_ef if cap_ef > 0 else 0
+        saturacion.append(sat_i)
+    df["Saturación"] = saturacion
+
+    # Mostrar DF con color según saturación
+    def color_saturation(val):
+        if val >= 1:
+            color = "background-color: #ff4c4c"  # rojo fuerte
+        elif val >= 0.85:
+            color = "background-color: #ffd966"  # amarillo
+        else:
+            color = "background-color: #a9d18e"  # verde
+        return color
+
     st.markdown("### Métricas por brazo")
-    st.dataframe(df)
+    st.dataframe(df.style.applymap(color_saturation, subset=["Saturación"]))
     plot_bar_metric(df, "Demora promedio (s)", "Demora media por brazo")
     plot_bar_metric(df, "Cola máxima", "Cola máxima por brazo")
     plot_bar_metric(df, "Atendidos", "Vehículos atendidos por brazo")
     show_stats(df)
+
+    # Alertas saturación
+    for i, v in enumerate(saturacion):
+        if v >= 1:
+            st.error(f"¡Brazo {i+1} está saturado (S≥1)! Considera aumentar tiempo verde o capacidad.")
+        elif v >= 0.85:
+            st.warning(f"Brazo {i+1} está próximo a saturarse (S≥0.85). Vigila la demanda o ajuste semafórico.")
 
     consejo = executive_summary_and_advice(df, segundos_verde, intersection, ciclo)
     st.markdown(f"### Consejo ejecutivo")
