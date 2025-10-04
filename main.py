@@ -120,7 +120,7 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
         return color
 
     st.markdown("### Métricas por brazo")
-    st.dataframe(df.style.applymap(color_saturation, subset=["Saturación"]))
+    st.dataframe(df.style.map(color_saturation, subset=["Saturación"]))
 
     st.markdown("### Resumen Estadístico")
     for col in ["Demora promedio (s)", "Cola máxima", "Atendidos", "Saturación"]:
