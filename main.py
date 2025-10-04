@@ -53,6 +53,19 @@ for idx, phase in enumerate(intersection.phases):
 # --- CONFIGURACIÓN DE FLUJOS POR BRAZO ---
 llegadas = [st.sidebar.slider(f"Flujo brazo {i+1} (veh/h)", 50, 1200, 400) for i in range(n_arms)]
 
+# --- CONFIGURACIÓN DE CAPACIDAD MÁXIMA POR BRAZO ---
+st.sidebar.markdown("### Capacidad máxima (veh/h) por brazo")
+capacidades_max = []
+for i in range(n_arms):
+    cap = st.sidebar.number_input(
+        f"Capacidad brazo {i+1} (veh/h)",
+        min_value=500, max_value=5000,
+        value=1800,
+        step=100,
+        key=f"cap_{i}"
+    )
+    capacidades_max.append(cap)
+
 # --- DIAGRAMA DEL CRUCE ---
 st.markdown("### Esquema del cruce y fases")
 selected_fase = st.selectbox(
@@ -88,15 +101,14 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
         "Atendidos": resultados['atendidos']
     })
 
-    # Calcular y añadir la saturación
+    # Calcular y añadir la saturación por brazo
     tiempos_verde_brazo = assign_verde_por_brazo(intersection, segundos_verde)
-    capacidad_max = 1800  # capacidad máxima estándar veh/h
     saturacion = []
     for i, q in enumerate(llegadas):
         if tiempos_verde_brazo[i] == 0:
             sat_i = 0
         else:
-            cap_ef = capacidad_max * (tiempos_verde_brazo[i] / ciclo)
+            cap_ef = capacidades_max[i] * (tiempos_verde_brazo[i] / ciclo)
             sat_i = q / cap_ef if cap_ef > 0 else 0
         saturacion.append(sat_i)
     df["Saturación"] = saturacion
