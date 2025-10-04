@@ -86,6 +86,13 @@ if st.button("Ejecutar simulación", disabled=(proporcion_total > 100)):
     plot_bar_metric(df, "Cola máxima", "Cola máxima por brazo")
     plot_bar_metric(df, "Atendidos", "Vehículos atendidos por brazo")
     show_stats(df)
+    
+    from utils import executive_summary_and_advice
+
+    consejo = executive_summary_and_advice(df, segundos_verde, intersection, ciclo)
+    st.markdown(f"### Consejo ejecutivo")
+    st.info(consejo if consejo else "El sistema parece estar funcionando bien con los parámetros actuales.")
+
 
     st.markdown("**Puedes comparar modelos, proporciones de verde y tasas de llegada para ver el impacto en las métricas.**")
 

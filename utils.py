@@ -44,3 +44,34 @@ def show_stats(df):
         st.markdown(f"#### {col}")
         for k, v in stats.items():
             st.write(f"- {k}: {v}")
+
+def executive_summary_and_advice(df, segundos_verde, intersection, ciclo):
+    consejo = ""
+    max_demora = df["Demora promedio (s)"].max()
+    max_cola = df["Cola máxima"].max()
+    brazo_peor = df.iloc[df["Demora promedio (s)"].idxmax()]["Brazo"]
+    idx_fase_peor = None
+
+    # Buscar qué fase abre ese brazo
+    for i, phase in enumerate(intersection.phases):
+        if df["Brazo"].iloc[df["Demora promedio (s)"].idxmax()] in [f"Brazo {a+1}" for a in phase.arms_active]:
+            idx_fase_peor = i
+            break
+
+    # Reglas simples para el consejo
+    if max_demora > 100:
+        consejo = f"Considera aumentar el ciclo total o incrementar el verde en la fase que atiende a {brazo_peor} (actualmente {segundos_verde[idx_fase_peor]}s)."
+    elif max_demora > 60 or max_cola > 30:
+        consejo = f"Sube el verde de la fase prioritaria para {brazo_peor} o baja el verde en fases con menos tráfico."
+    elif (df['Demora promedio (s)'] < 20).all():
+        consejo = "El cruce está operando eficientemente. Puedes considerar acortar ligeramente el ciclo para reducir esperas generales."
+    else:
+        consejo = "Prueba equilibrar mejor los verdes entre fases y revisa si el ciclo total es suficiente."
+
+    # Posibles mejoras avanzadas
+    if ciclo < 40:
+        consejo += " El ciclo es muy corto; podrías perder eficiencia por tiempos de pérdida."
+    elif ciclo > 150:
+        consejo += " Cuidado con ciclos demasiado largos: pueden aumentar esperas en fases con baja demanda."
+
+    return consejo
